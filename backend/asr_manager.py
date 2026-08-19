@@ -88,11 +88,18 @@ def _load_pipeline(device: str):
         if device.startswith("cuda"):
             load_kwargs["device_map"] = device
         model = AutoModelForTDT.from_pretrained(ASR_MODEL, **load_kwargs)
+        pipeline_kwargs = {}
+        if getattr(model, "hf_device_map", None) is None:
+            # Transformers 5 defaults a pipeline without an explicit device
+            # to accelerator 0. That would move even a CPU fallback model back
+            # to HIP and duplicate an already accelerator-resident model.
+            pipeline_kwargs["device"] = device
         return pipeline(
             "automatic-speech-recognition",
             model=model,
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
+            **pipeline_kwargs,
         )
     except Exception:
         del model, processor
@@ -115,19 +122,29 @@ def get_asr_pipeline():
                     total_gb or 0.0,
                     ASR_MIN_FREE_GPU_GB,
                 )
+            fallback_to_cpu = False
             try:
                 _pipeline = _load_pipeline(device)
-            except torch.OutOfMemoryError:
-                if not device.startswith("cuda") or not ASR_CPU_FALLBACK:
+            except RuntimeError as exc:
+                is_accelerator_oom = isinstance(exc, torch.OutOfMemoryError) or (
+                    "out of memory" in str(exc).lower() and ("hip" in str(exc).lower() or "cuda" in str(exc).lower())
+                )
+                if not device.startswith("cuda") or not ASR_CPU_FALLBACK or not is_accelerator_oom:
                     raise
                 logger.warning("Parakeet exhausted GPU/HIP memory while loading; retrying on CPU")
-                _pipeline = _load_pipeline("cpu")
-                device = "cpu"
+                fallback_to_cpu = True
             except Exception:
                 _pipeline = None
                 _active_device = None
                 _clear_accelerator_cache()
                 raise
+
+            # Retry after leaving the exception handler so traceback frames no
+            # longer retain partially constructed GPU model state.
+            if fallback_to_cpu:
+                _clear_accelerator_cache()
+                _pipeline = _load_pipeline("cpu")
+                device = "cpu"
             _active_device = device
             logger.info("Parakeet ASR model ready on %s", device)
         _last_used = time.time()
