@@ -12,9 +12,6 @@ services:
     devices:
       - /dev/kfd:/dev/kfd
       - /dev/dri:/dev/dri
-    group_add:
-      - video
-      - render
     security_opt:
       - seccomp=unconfined
     ipc: host
