@@ -183,7 +183,12 @@ def _load_kwargs() -> dict:
             OFFLOAD_DIR,
         )
     else:
-        kwargs["device_map"] = DEVICE
+        # Stream safetensor shards directly to the target device instead of
+        # materializing a complete CPU model before moving it to CUDA/HIP.
+        kwargs.update(
+            device_map=DEVICE,
+            low_cpu_mem_usage=True,
+        )
 
     return kwargs
 
@@ -213,10 +218,21 @@ def get_model() -> OmniVoice:
             logger.info(f"Loading OmniVoice from {CHECKPOINT} on {DEVICE} as {DTYPE} (lm_quant={LM_QUANT})")
             logger.info(f"VRAM before load: {_vram_info()}")
 
-            _model = OmniVoice.from_pretrained(
-                CHECKPOINT,
-                **_load_kwargs(),
-            )
+            loaded_model = None
+            try:
+                loaded_model = OmniVoice.from_pretrained(
+                    CHECKPOINT,
+                    **_load_kwargs(),
+                )
+                _model = loaded_model
+            except Exception:
+                _model = None
+                del loaded_model
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                logger.exception("OmniVoice loading failed; released partial model state")
+                raise
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
