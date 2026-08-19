@@ -106,6 +106,8 @@ Common variables:
 - `ASR_MODEL`: integrated Hugging Face Parakeet model id
 - `ASR_DEVICE`: device for integrated Parakeet, normally `cuda` with CUDA/ROCm
 - `ASR_MODEL_TTL_SECONDS`: unload Parakeet after this many idle seconds
+- `ASR_CPU_FALLBACK`: use CPU automatically if GPU/HIP memory is insufficient
+- `ASR_MIN_FREE_GPU_GB`: required free GPU/HIP memory before loading ASR (default `2`)
 
 Compose uses the internal backend URL between containers. `API_URL` in `.env-example`
 is mainly useful when running the frontend directly on the host.
@@ -187,9 +189,11 @@ POST /v1/audio/speech
 POST /v1/audio/transcriptions
 ```
 
-The model unloads after `ASR_MODEL_TTL_SECONDS` of inactivity. On ROCm it uses
-the same HIP-backed PyTorch `cuda` device as OmniVoice. This is the original
-PyTorch Parakeet model, not the smaller ONNX INT8 conversion.
+The model unloads after `ASR_MODEL_TTL_SECONDS` of inactivity. On ROCm it tries
+the same HIP-backed PyTorch `cuda` device as OmniVoice. If less than
+`ASR_MIN_FREE_GPU_GB` is available, it automatically loads Parakeet on CPU so
+OmniVoice can remain on the GPU. This is the original PyTorch Parakeet model,
+not the smaller ONNX INT8 conversion.
 
 Test it with:
 

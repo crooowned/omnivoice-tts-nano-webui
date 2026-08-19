@@ -11,6 +11,8 @@ LOAD_ASR = os.environ.get("LOAD_ASR", "false").lower() == "true"
 ASR_MODEL = os.environ.get("ASR_MODEL", "nvidia/parakeet-tdt-0.6b-v3")
 ASR_DEVICE = os.environ.get("ASR_DEVICE", DEVICE).strip() or DEVICE
 ASR_MODEL_TTL_SECONDS = int(os.environ.get("ASR_MODEL_TTL_SECONDS", "300"))
+ASR_CPU_FALLBACK = os.environ.get("ASR_CPU_FALLBACK", "true").lower() == "true"
+ASR_MIN_FREE_GPU_GB = float(os.environ.get("ASR_MIN_FREE_GPU_GB", "2"))
 MODEL_TTL_SECONDS = int(os.environ.get("MODEL_TTL_SECONDS", "3600"))
 MAX_VRAM_GB = float(os.environ.get("MAX_VRAM_GB", "0"))  # 0 = no limit
 CPU_OFFLOAD = os.environ.get("CPU_OFFLOAD", "false").lower() == "true"
