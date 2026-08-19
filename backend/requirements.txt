@@ -1,7 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/cu128
 torch==2.8.0
 torchaudio==2.8.0
-transformers==5.3
+transformers==5.9.0
 accelerate
 bitsandbytes
 omnivoice

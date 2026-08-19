@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # wheels from the cu128 index, so ROCm has its own application-only list.
 COPY requirements-rocm.txt .
 RUN python -m pip install --no-cache-dir -r requirements-rocm.txt \
-    && python -c "import torch, torchaudio; assert torch.version.hip, 'ROCm-enabled PyTorch is required'; print('PyTorch', torch.__version__, 'ROCm', torch.version.hip)"
+    && python -c "import torch, torchaudio; from transformers import AutoModelForTDT; assert torch.version.hip, 'ROCm-enabled PyTorch is required'; print('PyTorch', torch.__version__, 'ROCm', torch.version.hip, 'Parakeet TDT ready')"
 
 COPY . .
 

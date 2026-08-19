@@ -1,5 +1,7 @@
 import logging
 import os
+import threading
+from contextlib import asynccontextmanager
 from logging.handlers import RotatingFileHandler
 
 import uvicorn
@@ -44,19 +46,22 @@ for noisy in (
 ):
     logging.getLogger(noisy).setLevel(logging.WARNING)
 
-app = FastAPI(title="OmniVoice API", version="0.1.0")
-
-
-@app.on_event("startup")
-def startup_load_model():
-    import threading
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
     logger = logging.getLogger("startup")
+
     def _load():
         logger.info("Pre-loading OmniVoice model on startup...")
         from model_manager import get_model
+
         get_model()
         logger.info("Model ready.")
+
     threading.Thread(target=_load, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="OmniVoice API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
