@@ -1,0 +1,24 @@
+ARG ROCM_PYTORCH_IMAGE=rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_2.10.0_ORT_1.23.2
+FROM ${ROCM_PYTORCH_IMAGE}
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg libsndfile1 git \
+    && rm -rf /var/lib/apt/lists/*
+
+# The AMD base image already contains the matching ROCm builds of torch and
+# torchaudio. Installing requirements.txt here would replace them with CUDA
+# wheels from the cu128 index, so ROCm has its own application-only list.
+COPY requirements-rocm.txt .
+RUN python -m pip install --no-cache-dir -r requirements-rocm.txt \
+    && python -c "import torch, torchaudio; assert torch.version.hip, 'ROCm-enabled PyTorch is required'; print('PyTorch', torch.__version__, 'ROCm', torch.version.hip)"
+
+COPY . .
+
+ENV VOICES_DIR=/app/voices
+ENV MODELS_DIR=/app/models
+
+EXPOSE 8883
+
+CMD ["python", "serve.py"]

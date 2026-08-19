@@ -31,12 +31,14 @@ It supports:
 - saved voice profiles
 - optional STT-assisted reference transcription and trimming
 - low-VRAM GPU settings such as `LM_QUANT`, `MAX_VRAM_GB`, chunking, and TTL
-- CPU and NVIDIA GPU compose profiles
+- CPU, NVIDIA GPU, and AMD ROCm compose profiles
 
 ## Requirements
 
 - Docker and Docker Compose
-- For GPU mode: NVIDIA Container Toolkit and a CUDA-capable GPU
+- For NVIDIA GPU mode: NVIDIA Container Toolkit and a CUDA-capable GPU
+- For AMD GPU mode: Linux, a ROCm-compatible `amdgpu` host driver, and access to
+  `/dev/kfd` plus `/dev/dri`
 
 ## Quick Start
 
@@ -52,6 +54,13 @@ CPU:
 ```bash
 cp .env-example .env
 ./start-cpu.sh -d
+```
+
+AMD ROCm (Ryzen AI Max+ 395 / `gfx1151`):
+
+```bash
+cp .env-example .env
+./start-rocm.sh -d
 ```
 
 Open the WebUI at:
@@ -114,6 +123,27 @@ and reduce `CHUNK_CHARS` before increasing model precision or step count.
 `float16` is the recommended GPU dtype. `bfloat16` can fail in OmniVoice post
 processing because parts of the upstream model convert tensors to NumPy, which
 does not support PyTorch `BFloat16` tensors directly.
+
+### AMD ROCm / Ryzen AI Max
+
+The Ryzen AI Max+ 395 GPU target is `gfx1151` (not `gfx1511`). The ROCm profile
+uses AMD's official `rocm/pytorch` image with ROCm 7.2.4 and passes `/dev/kfd`
+and `/dev/dri` into the backend container. No `HSA_OVERRIDE_GFX_VERSION` is
+needed because this target is supported natively.
+
+PyTorch intentionally still uses `DEVICE=cuda`: its Python device API keeps the
+`cuda` name when PyTorch is built with HIP/ROCm. You can verify the running
+container after startup with:
+
+```bash
+docker compose -f docker-compose.rocm.yaml exec omnivoice-backend \
+  python -c "import torch; print(torch.version.hip, torch.cuda.get_device_name(0), torch.cuda.get_device_properties(0).gcnArchName)"
+```
+
+The ROCm profile defaults to `LM_QUANT=none`. The existing `nf4`/`int8` path
+uses bitsandbytes and is not part of this tested ROCm setup. Since the APU uses
+shared memory, the profile also defaults `MAX_VRAM_GB=0`. To select another AMD
+base image without editing files, set `ROCM_PYTORCH_IMAGE` in `.env`.
 
 ### Experimental CPU Offload
 

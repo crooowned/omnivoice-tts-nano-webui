@@ -1,0 +1,12 @@
+# torch and torchaudio are supplied by the rocm/pytorch base image.
+# bitsandbytes is intentionally omitted; use LM_QUANT=none with this image.
+transformers==5.3
+accelerate
+omnivoice
+pydub
+soundfile
+librosa
+numpy
+fastapi
+uvicorn[standard]
+httpx

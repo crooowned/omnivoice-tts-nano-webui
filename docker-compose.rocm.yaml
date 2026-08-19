@@ -1,0 +1,64 @@
+services:
+  omnivoice-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.rocm
+      args:
+        ROCM_PYTORCH_IMAGE: ${ROCM_PYTORCH_IMAGE:-rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_2.10.0_ORT_1.23.2}
+    container_name: omnivoice-backend
+    restart: unless-stopped
+    ports:
+      - "8883:8883"
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
+    security_opt:
+      - seccomp=unconfined
+    ipc: host
+    volumes:
+      - ./voices:/app/voices
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - huggingface_cache:/root/.cache/huggingface
+    environment:
+      - OMNIVOICE_MODEL=${OMNIVOICE_MODEL:-k2-fsa/OmniVoice}
+      # PyTorch uses the cuda device name for both its CUDA and HIP backends.
+      - DEVICE=cuda
+      - DTYPE=${DTYPE:-float16}
+      - LM_QUANT=none
+      - LOAD_ASR=${LOAD_ASR:-false}
+      - MODEL_TTL_SECONDS=${MODEL_TTL_SECONDS:-3600}
+      - CHUNK_CHARS=${CHUNK_CHARS:-200}
+      - CHUNK_GAP_MS=${CHUNK_GAP_MS:-150}
+      - TURBO_STEPS=${TURBO_STEPS:-4}
+      - DYNAMIC_STEPS_MIN=${DYNAMIC_STEPS_MIN:-4}
+      - DYNAMIC_STEPS_MAX=${DYNAMIC_STEPS_MAX:-64}
+      - DYNAMIC_DESIRED_SPEED=${DYNAMIC_DESIRED_SPEED:-4.0}
+      - DYNAMIC_STEP_DELTA=${DYNAMIC_STEP_DELTA:-4}
+      # An APU uses shared system memory; do not impose a discrete-VRAM cap.
+      - MAX_VRAM_GB=${MAX_VRAM_GB:-0}
+
+  omnivoice-frontend:
+    build: ./frontend
+    container_name: omnivoice-frontend
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${FRONTEND_PORT:-7863}:${FRONTEND_PORT:-7863}"
+    environment:
+      - API_URL=http://omnivoice-backend:8883
+      - STT_URL=${STT_URL:-}
+      - FRONTEND_PORT=${FRONTEND_PORT:-7863}
+      - UI_LANG=${UI_LANG:-en}
+      - OUTPUTS_DIR=/app/outputs
+    volumes:
+      - ./outputs:/app/outputs
+    depends_on:
+      - omnivoice-backend
+
+volumes:
+  huggingface_cache:
