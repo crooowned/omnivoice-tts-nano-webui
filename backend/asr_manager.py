@@ -50,17 +50,37 @@ def get_asr_pipeline():
     _ensure_ttl_thread()
     with _load_lock:
         if _pipeline is None:
-            from transformers import pipeline
+            from transformers import AutoModelForTDT, AutoProcessor, pipeline
 
             device = _device()
             dtype = _dtype(device)
             logger.info("Loading Parakeet ASR model %s on %s as %s", ASR_MODEL, device, dtype)
-            _pipeline = pipeline(
-                "automatic-speech-recognition",
-                model=ASR_MODEL,
-                device=device,
-                dtype=dtype,
-            )
+            model = None
+            processor = None
+            try:
+                processor = AutoProcessor.from_pretrained(ASR_MODEL)
+                model = AutoModelForTDT.from_pretrained(
+                    ASR_MODEL,
+                    dtype=dtype,
+                    device_map=device,
+                    low_cpu_mem_usage=True,
+                )
+                # Do not pass device here: Accelerate's device_map has already
+                # placed the weights directly on the target and pipeline would
+                # otherwise call model.to(), duplicating them during loading.
+                _pipeline = pipeline(
+                    "automatic-speech-recognition",
+                    model=model,
+                    tokenizer=processor.tokenizer,
+                    feature_extractor=processor.feature_extractor,
+                )
+            except Exception:
+                _pipeline = None
+                del model, processor
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                raise
             logger.info("Parakeet ASR model ready")
         _last_used = time.time()
         return _pipeline
