@@ -16,6 +16,9 @@ services:
       - DTYPE=float16
       - LM_QUANT=none
       - LOAD_ASR=false
+      - ASR_MODEL=${ASR_MODEL:-nvidia/parakeet-tdt-0.6b-v3}
+      - ASR_DEVICE=${ASR_DEVICE:-cpu}
+      - ASR_MODEL_TTL_SECONDS=${ASR_MODEL_TTL_SECONDS:-300}
       - MODEL_TTL_SECONDS=3600
       - CHUNK_CHARS=200
       - CHUNK_GAP_MS=${CHUNK_GAP_MS:-150}

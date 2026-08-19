@@ -24,6 +24,7 @@ from routes.tts import (
     CHUNK_GAP_MS,
 )
 from voice_store import list_voices as list_saved_voices, load_voice
+from config import ASR_MODEL
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1", tags=["openai-compat"])
@@ -805,6 +806,7 @@ def list_models():
     return {
         "object": "list",
         "data": [
+            {"id": "parakeet-tdt-0.6b-v3", "object": "model", "owned_by": "nvidia", "source": ASR_MODEL},
             {"id": "turbo", "object": "model", "description": f"OmniVoice turbo ({TURBO_STEPS} steps)"},
             {"id": "dynamic", "object": "model", "description": "OmniVoice adaptive inference steps"},
             {"id": "tts-1", "object": "model", "description": "OmniVoice fast (16 steps)"},

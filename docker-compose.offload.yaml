@@ -17,6 +17,9 @@ services:
       - DTYPE=float16
       - LM_QUANT=nf4
       - LOAD_ASR=false
+      - ASR_MODEL=${ASR_MODEL:-nvidia/parakeet-tdt-0.6b-v3}
+      - ASR_DEVICE=${ASR_DEVICE:-cpu}
+      - ASR_MODEL_TTL_SECONDS=${ASR_MODEL_TTL_SECONDS:-300}
       - MODEL_TTL_SECONDS=3600
       - CPU_OFFLOAD=true
       - CPU_OFFLOAD_GB=${CPU_OFFLOAD_GB:-8}

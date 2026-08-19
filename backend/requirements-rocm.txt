@@ -10,3 +10,4 @@ numpy
 fastapi
 uvicorn[standard]
 httpx
+python-multipart

@@ -30,6 +30,7 @@ It supports:
 - voice design with OmniVoice speaker tags
 - saved voice profiles
 - optional STT-assisted reference transcription and trimming
+- integrated Parakeet TDT 0.6B v3 speech-to-text on the same API
 - low-VRAM GPU settings such as `LM_QUANT`, `MAX_VRAM_GB`, chunking, and TTL
 - CPU, NVIDIA GPU, and AMD ROCm compose profiles
 
@@ -89,7 +90,8 @@ Common variables:
 
 - `FRONTEND_PORT`: host port for the Gradio UI
 - `UI_LANG`: UI language, currently `en` or `de`
-- `STT_URL`: optional OpenAI-compatible transcription service URL
+- `STT_URL`: optional external transcription service URL; empty uses the
+  integrated Parakeet endpoint
 - `OMNIVOICE_MODEL`: Hugging Face model id or local model path
 - `DEVICE`: `cpu` or `cuda`
 - `DTYPE`: `float16` or `bfloat16`
@@ -101,6 +103,9 @@ Common variables:
 - `AUDIO_TOKENIZER_DEVICE`: optional `cpu` or `cuda` override for OmniVoice's audio tokenizer
 - `CHUNK_CHARS`: split long text into smaller generation chunks
 - `MODEL_TTL_SECONDS`: unload idle backend model state after this many seconds
+- `ASR_MODEL`: integrated Hugging Face Parakeet model id
+- `ASR_DEVICE`: device for integrated Parakeet, normally `cuda` with CUDA/ROCm
+- `ASR_MODEL_TTL_SECONDS`: unload Parakeet after this many idle seconds
 
 Compose uses the internal backend URL between containers. `API_URL` in `.env-example`
 is mainly useful when running the frontend directly on the host.
@@ -171,28 +176,42 @@ The mixed-offload compose profile also defaults `AUDIO_TOKENIZER_DEVICE=cpu`.
 That may matter more than LLM offload for OmniVoice because the upstream loader
 creates the audio tokenizer separately after loading the main model.
 
-## Optional STT
+## Integrated STT
 
-STT is optional and intentionally lives in a separate project:
-[stt-nano-webui](https://github.com/Wladastic/stt-nano-webui).
-This OmniVoice repo only needs an OpenAI-compatible transcription endpoint at:
+Parakeet TDT 0.6B v3 is integrated into the same PyTorch backend and loaded on
+the first transcription request. It supports German and 24 other European
+languages with automatic language detection. TTS and STT are available at:
 
 ```text
+POST /v1/audio/speech
 POST /v1/audio/transcriptions
 ```
 
-If `STT_URL` is empty, transcription is disabled and auto-trim falls back to
-silence detection.
+The model unloads after `ASR_MODEL_TTL_SECONDS` of inactivity. On ROCm it uses
+the same HIP-backed PyTorch `cuda` device as OmniVoice. This is the original
+PyTorch Parakeet model, not the smaller ONNX INT8 conversion.
 
-For a local STT service on the host:
+Test it with:
 
-```env
-STT_URL=http://localhost:8882
+```bash
+curl -X POST http://localhost:8883/v1/asr/load
+
+curl -s http://localhost:8883/v1/audio/transcriptions \
+  -F file=@audio.wav \
+  -F model=parakeet-tdt-0.6b-v3 \
+  -F response_format=json
 ```
 
-For a service on another machine, set that URL only in your local `.env`.
+Set `STT_URL` only to override the integrated endpoint with another
+OpenAI-compatible transcription service. For a separate service on the Docker
+host, use:
 
-The companion `stt-nano-webui` project provides:
+```env
+STT_URL=http://host.docker.internal:8882
+```
+
+The optional companion [stt-nano-webui](https://github.com/Wladastic/stt-nano-webui)
+still provides a standalone multi-model STT service with:
 
 - WebUI: `http://localhost:7861`
 - backend API: `http://localhost:8882`
@@ -200,9 +219,8 @@ The companion `stt-nano-webui` project provides:
 - lightweight default model: `parakeet-onnx-int8`
 - optional `whisper-1` alias for OpenAI-compatible clients
 
-Together, `omnivoice-tts-nano-webui` and `stt-nano-webui` can be used as local
-speech services for tools such as OpenWebUI: this repo covers TTS/voice cloning,
-while `stt-nano-webui` covers speech-to-text.
+The standalone project is useful when STT should have its own lifecycle or use
+ONNX INT8. It is no longer required for the transcription buttons in this UI.
 
 ## Voice Design Tags
 

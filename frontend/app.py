@@ -14,7 +14,7 @@ import soundfile as sf
 from i18n import t
 
 API_URL = os.environ.get("API_URL", "http://localhost:8883")
-STT_URL = os.environ.get("STT_URL", "").strip().rstrip("/")
+STT_URL = (os.environ.get("STT_URL", "").strip() or API_URL).rstrip("/")
 FRONTEND_PORT = int(os.environ.get("FRONTEND_PORT", "7861"))
 STREAM_CHUNK_SIZE = int(os.environ.get("STREAM_CHUNK_SIZE", "65536"))
 STREAM_SAMPLE_RATE = int(os.environ.get("STREAM_SAMPLE_RATE", "24000"))
@@ -446,7 +446,7 @@ def _stt_word_segments(audio_path: str) -> list[dict]:
                 f"{stt_url}/v1/audio/transcriptions",
                 files={"file": ("ref.wav", f, "audio/wav")},
                 data={"model": "whisper-turbo", "response_format": "verbose_json"},
-                timeout=60,
+                timeout=600,
             )
         r.raise_for_status()
         data = r.json()
@@ -545,8 +545,8 @@ def transcribe_audio(audio_path, fallback_path=None):
             r = httpx.post(
                 f"{stt_url}/v1/audio/transcriptions",
                 files={"file": ("ref.wav", f, "audio/wav")},
-                data={"model": "parakeet-onnx-int8", "response_format": "json"},
-                timeout=60,
+                data={"model": "parakeet-tdt-0.6b-v3", "response_format": "json"},
+                timeout=600,
             )
         r.raise_for_status()
         data = r.json()

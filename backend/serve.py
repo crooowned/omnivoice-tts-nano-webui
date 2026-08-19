@@ -10,6 +10,7 @@ from routes.tts import router as tts_router
 from routes.voices import router as voices_router
 from routes.models import router as models_router
 from routes.speech import router as speech_router
+from routes.transcriptions import router as transcriptions_router
 
 LOG_FILE = os.environ.get("LOG_FILE", "/app/logs/backend.log")
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
@@ -68,6 +69,7 @@ app.include_router(tts_router)
 app.include_router(voices_router)
 app.include_router(models_router)
 app.include_router(speech_router)
+app.include_router(transcriptions_router)
 
 
 @app.get("/health")

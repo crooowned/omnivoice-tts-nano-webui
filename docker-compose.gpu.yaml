@@ -16,6 +16,9 @@ services:
       - DTYPE=float16
       - LM_QUANT=nf4  # none, nf4, or int8 — try nf4 to drop ~800MB VRAM
       - LOAD_ASR=false
+      - ASR_MODEL=${ASR_MODEL:-nvidia/parakeet-tdt-0.6b-v3}
+      - ASR_DEVICE=${ASR_DEVICE:-cuda}
+      - ASR_MODEL_TTL_SECONDS=${ASR_MODEL_TTL_SECONDS:-300}
       - MODEL_TTL_SECONDS=3600
       - CHUNK_CHARS=200
       - CHUNK_GAP_MS=${CHUNK_GAP_MS:-150}
